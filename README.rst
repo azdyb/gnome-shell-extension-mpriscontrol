@@ -15,8 +15,13 @@ What it looks like?
 
 Everybody loves screenshots, right?
 
+Playing:
+
 .. image:: http://img402.imageshack.us/img402/9325/mpriscontrolplaying.png
   :alt: MprisControl (playing)
+
+Paused:
+
 .. image:: http://img843.imageshack.us/img843/1633/mpriscontrolpaused.png
   :alt: MprisControl (paused)
 
@@ -46,7 +51,7 @@ or::
 If you're using other media player and you know it is MPRIS compliant, you can add
 it's name to SUPPORTED_PLAYERS in MprisControl\@zdyb.tk/extension.js file::
 
-const SUPPORTED_PLAYERS = ["your_player_here", "rhythmbox", "banshee"];
+  const SUPPORTED_PLAYERS = ["your_player_here", "rhythmbox", "banshee"];
 
 
 License
