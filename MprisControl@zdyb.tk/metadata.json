@@ -1,0 +1,6 @@
+{
+  "shell-version": ["3.0.2"],
+  "uuid": "MprisControl@zdyb.tk",
+  "name": "MPRIS Player Control",
+  "description": "Control any MPRIS compliant player from gnome-shell panel"
+}
