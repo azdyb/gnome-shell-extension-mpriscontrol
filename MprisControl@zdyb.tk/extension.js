@@ -1,7 +1,7 @@
+const St = imports.gi.St;
 const DBus = imports.dbus;
 const Lang = imports.lang;
 const Mainloop = imports.mainloop;
-const Signals = imports.signals;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Panel = imports.ui.panel;
@@ -16,12 +16,13 @@ const PLAYBACKSTATUS_PAUSED     = "Paused";
 
 // TODO: Move to gsettings
 const SUPPORTED_PLAYERS = ["rhythmbox", "banshee"];
+const HIDE_DISCONNECTED = true;
 
 
 const DBusPropertiesInterface = {
     name: "org.freedesktop.DBus.Properties",
     signals: [
-      { name: "PropertiesChanged", inSignature: "a{sv}" }
+        { name: "PropertiesChanged", inSignature: "a{sv}" }
     ]
 }
 
@@ -41,10 +42,13 @@ DBus.proxifyPrototype(DBusProperties.prototype, DBusPropertiesInterface)
 const MprisMediaPlayer2PlayerInterface = {
     name: "org.mpris.MediaPlayer2.Player",
     methods: [
-      { name: "PlayPause", inSignature: "", outSignature: "" },
+        { name: "Previous", inSignature: "", outSignature: "" },
+        { name: "PlayPause", inSignature: "", outSignature: "" },
+        { name: "Next", inSignature: "", outSignature: "" },
     ],
     properties: [
-      { name: "PlaybackStatus", signature: "s", access: "read" },
+    { name: "Metadata", signature: "a{sv}", access: "read" },
+    { name: "PlaybackStatus", signature: "s", access: "read" },
     ]
 };
 
@@ -64,11 +68,11 @@ DBus.proxifyPrototype(MprisMediaPlayer2Player.prototype, MprisMediaPlayer2Player
 const MprisMediaPlayer2Interface = {
     name: "org.mpris.MediaPlayer2",
     methods: [
-      { name: "Raise", inSignature: "", outSignature: "" },
-      { name: "Quit", inSignature: "", outSignature: "" },
+        { name: "Raise", inSignature: "", outSignature: "" },
+        { name: "Quit", inSignature: "", outSignature: "" },
     ],
     properties: [
-      { name: "Identity", signature: "s", access: "read" },
+        { name: "Identity", signature: "s", access: "read" },
     ]
 };
 
@@ -85,6 +89,28 @@ MprisMediaPlayer2.prototype = {
 DBus.proxifyPrototype(MprisMediaPlayer2.prototype, MprisMediaPlayer2Interface);
 
 
+function PopupIconMenuItem() {
+    this._init.apply(this, arguments);
+}
+
+PopupIconMenuItem.prototype = {
+    __proto__: PopupMenu.PopupBaseMenuItem.prototype,
+
+    _init: function (iconName, params) {
+        PopupMenu.PopupBaseMenuItem.prototype._init.call(this, params);
+
+        this._icon = new St.Icon({ style_class: "popup-menu-icon" });
+        this.addActor(this._icon, { align: St.Align.MIDDLE });
+
+        this.setIcon(iconName);
+    },
+
+    setIcon: function(name) {
+        this._icon.icon_name = name;
+    }
+};
+
+
 function Indicator() {
     this._init.apply(this, arguments);
 }
@@ -96,26 +122,84 @@ Indicator.prototype = {
     dbus_properties: null,
     mprisplayer2_player: null,
     mprisplayer2: null,
-    playback_status:  PLAYBACKSTATUS_UNKNOWN,
+    playback_status: PLAYBACKSTATUS_UNKNOWN,
 
     _init: function() {
         PanelMenu.SystemStatusButton.prototype._init.call(this, "media-eject", null);
 
-        this.actor.connect("button-press-event", Lang.bind(this, this.on_button_press));
+        this.actor.connect("button-press-event", Lang.bind(this, this.on_indicator_buttonpress));
         
-        this.playback_status_changed(PLAYBACKSTATUS_UNKNOWN);
+        this.menu_playback = new St.BoxLayout({name: "playbackControls"});
+        this.menu.addActor(this.menu_playback);
+
+        this.menu_playback_buttons = {
+            "previous": new PopupIconMenuItem("media-skip-backward"),
+            "playpause": new PopupIconMenuItem("media-playback-pause"),
+            "next": new PopupIconMenuItem("media-skip-forward")
+        }
+        
+        this.menu_playback_buttons.previous.connect("activate", Lang.bind(this, this.on_previous_clicked));
+        this.menu_playback_buttons.playpause.connect("activate", Lang.bind(this, this.on_playpause_clicked));
+        this.menu_playback_buttons.next.connect("activate", Lang.bind(this, this.on_next_clicked));
+        
+        this.menu_playback.add(this.menu_playback_buttons.previous.actor, { expand: true, x_fill: false, x_align: St.Align.START });
+        this.menu_playback.add(this.menu_playback_buttons.playpause.actor, { expand: true, x_fill: false, x_align: St.Align.MIDDLE });
+        this.menu_playback.add(this.menu_playback_buttons.next.actor, { expand: true, x_fill: false, x_align: St.Align.END });
+
+        this.menu_player = new PopupMenu.PopupMenuItem("", { reactive: true, style_class: "menu-player" });
+        this.menu_player.connect("activate", Lang.bind(this, this.on_playermenu_clicked));
+        this.menu.addMenuItem(this.menu_player);
+
+        this.unbind_player();
 
         for each(let p in SUPPORTED_PLAYERS)
             DBus.session.watch_name("org.mpris.MediaPlayer2." + p, false, Lang.bind(this, this.player_appeared), Lang.bind(this, this.player_vanished));
     },
     
-    on_button_press: function(sender, event) {
-        this.menu.close(false); // Ugly hack
-        if (this.mprisplayer2_player) {
+    on_previous_clicked: function() {
+        if (this.mprisplayer2_player)
+            this.mprisplayer2_player.PreviousRemote();
+    },
+    
+    on_playpause_clicked: function() {
+        if (this.mprisplayer2_player)
+            this.mprisplayer2_player.PlayPauseRemote();
+    },
+    
+    on_next_clicked: function() {
+        if (this.mprisplayer2_player)
+            this.mprisplayer2_player.NextRemote();
+    },
+    
+    on_indicator_buttonpress: function(sender, event) {
+        if ( (event.get_button() == 2) && this.mprisplayer2_player) {
+            this.menu.close(false); // Ugly hack
             this.mprisplayer2_player.PlayPauseRemote();
             return true;
         }
         return false;
+    },
+    
+    on_playermenu_clicked: function() {
+        if (this.mprisplayer2) this.mprisplayer2.RaiseRemote();
+    },
+    
+    on_player_propertieschanged: function(properties) {
+        if ("Identity" in properties)
+            this.menu_player.label.set_text(properties["Identity"]);
+        if ("CanRaise" in properties)
+            this.menu_player.actor.reactive = properties["CanRaise"];
+    },
+    
+    on_playback_propertieschanged: function(properties) {
+        if ("PlaybackStatus" in properties)
+            this.playback_status_changed(properties["PlaybackStatus"]);
+        if (("CanPlay" in properties) || ("CanPause" in properties))
+            this.menu_playback_buttons.playpause.actor.reactive = (properties["CanPlay"] || properties["CanPause"]);
+        if ("CanGoPrevious" in properties)
+            this.menu_playback_buttons.previous.actor.reactive = properties["CanGoPrevious"];
+        if ("CanGoNext" in properties)
+            this.menu_playback_buttons.next.actor.reactive = properties["CanGoNext"];
     },
     
     bind_player: function(mpris_player) {
@@ -123,16 +207,24 @@ Indicator.prototype = {
         this.mprisplayer2_player = new MprisMediaPlayer2Player(mpris_player);
         this.dbus_properties = new DBusProperties(mpris_player);
         
-        this.mprisplayer2_player.GetRemote("PlaybackStatus", Lang.bind(this, function(status) {
-           this.playback_status_changed(status); 
+        this.mprisplayer2.GetAllRemote(Lang.bind(this, this.on_player_propertieschanged));
+        this.mprisplayer2_player.GetAllRemote(Lang.bind(this, this.on_playback_propertieschanged));
+        
+        this.dbus_properties.connect("PropertiesChanged", Lang.bind(this, function(sender, iface, properties) {
+            if (iface == "org.mpris.MediaPlayer2.Player") {
+                this.on_playback_propertieschanged(properties);
+            } else if (iface == "org.mpris.MediaPlayer2") {
+                this.on_player_propertieschanged(properties);
+            }
         }));
-        this.dbus_properties.connect("PropertiesChanged", Lang.bind(this, this.on_propertieschanged));
+        this.menu_playback.show();
     },
     
     unbind_player: function() {
         this.mprisplayer2_player = null;
         this.mprisplayer2 = null;
         this.dbus_properties = null;
+        this.menu_playback.hide();
         this.playback_status_changed(PLAYBACKSTATUS_UNKNOWN);
     },
     
@@ -159,22 +251,25 @@ Indicator.prototype = {
         this.playback_status = playback_status;
         if (playback_status == PLAYBACKSTATUS_PAUSED) {
             this.setIcon("media-playback-pause");
+            this.menu_playback_buttons.playpause.setIcon("media-playback-start");
             this.actor.show();
         } else if (playback_status == PLAYBACKSTATUS_PLAYING) {
             this.setIcon("media-playback-start");
+            this.menu_playback_buttons.playpause.setIcon("media-playback-pause");
             this.actor.show();
         } else if (playback_status == PLAYBACKSTATUS_STOPPED) {
             this.setIcon("media-playback-stop");
+            this.menu_playback_buttons.playpause.setIcon("media-playback-start");
             this.actor.show();
         } else {
+            for each (let b in this.menu_playback_buttons) {
+                b.actor.reactive = false;
+            }
             this.setIcon("media-eject");
-            this.actor.hide();
-        }
-    },
-    
-    on_propertieschanged: function(sender, iface, properties) {
-        if (iface == "org.mpris.MediaPlayer2.Player" && "PlaybackStatus" in properties) {
-            this.playback_status_changed(properties["PlaybackStatus"]);
+            this.menu_playback_buttons.playpause.setIcon("media-playback-start");
+            this.menu_player.label.set_text(_("No player found"));
+            this.menu_player.actor.reactive = false;
+            if (HIDE_DISCONNECTED) this.actor.hide();
         }
     }
 };

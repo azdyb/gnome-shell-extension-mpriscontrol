@@ -4,8 +4,8 @@ What is MprisControl?
 MprisControl is a gnome-shell extension that allows controling any MPRIS_
 compliant player with (literally) one click. The extension places an icon
 on gnome-shell Main Panel which indicates playback status of currently running
-media player. Clicking the icon toggles play/pause. And that's it! No other
-functionality is implemented, nor is planned.
+media player. Middle-clicking the icon toggles play/pause. Left- or right-
+-clicking shows menu with standard playback control buttons.
 
 .. _MPRIS: http://www.mpris.org/
 
@@ -17,13 +17,13 @@ Everybody loves screenshots, right?
 
 Playing:
 
-.. image:: http://img402.imageshack.us/img402/9325/mpriscontrolplaying.png
+.. image:: http://img155.imageshack.us/img155/2687/mpriscontrolplaying2.png
   :alt: MprisControl (playing)
 
-Paused:
+Menu:
 
-.. image:: http://img843.imageshack.us/img843/1633/mpriscontrolpaused.png
-  :alt: MprisControl (paused)
+.. image:: http://img441.imageshack.us/img441/1195/mpriscontrolmenu.png
+  :alt: MprisControl (menu)
 
 
 Disclaimer
@@ -52,6 +52,11 @@ If you're using other media player and you know it is MPRIS compliant, you can a
 it's name to SUPPORTED_PLAYERS in MprisControl\@zdyb.tk/extension.js file::
 
   const SUPPORTED_PLAYERS = ["your_player_here", "rhythmbox", "banshee"];
+
+Moreover, if you want the indicator to be shown even though there is no player
+running, change the HIDE_DISCONNECTED property to false in the same file::
+  
+  const HIDE_DISCONNECTED = false;
 
 
 License
