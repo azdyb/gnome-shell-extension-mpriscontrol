@@ -1,6 +1,7 @@
 {
-  "shell-version": ["3.0.2"],
+  "shell-version": ["3.2"],
   "uuid": "MprisControl@zdyb.tk",
   "name": "MPRIS Player Control",
-  "description": "Control any MPRIS compliant player from gnome-shell panel"
+  "description": "Control any MPRIS compliant player from gnome-shell panel",
+  "url": "http://github.com/ojo/gnome-shell-extension-mpriscontrol"
 }

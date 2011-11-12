@@ -1,3 +1,4 @@
+const Main = imports.ui.main;
 const St = imports.gi.St;
 const DBus = imports.dbus;
 const Lang = imports.lang;
@@ -111,11 +112,11 @@ PopupIconMenuItem.prototype = {
 };
 
 
-function Indicator() {
+function MprisIndicator() {
     this._init.apply(this, arguments);
 }
 
-Indicator.prototype = {
+MprisIndicator.prototype = {
     __proto__: PanelMenu.SystemStatusButton.prototype,
 
     discovered_players: [],
@@ -229,7 +230,7 @@ Indicator.prototype = {
     },
     
     player_appeared: function(player) {
-        this.discovered_players.push(player);
+        if (this.discovered_players.indexOf(player) < 0) this.discovered_players.push(player);
         if (this.mprisplayer2_player == null) { // No player currently bound
             this.bind_player(player);
         }
@@ -274,7 +275,20 @@ Indicator.prototype = {
     }
 };
 
-function main(meta) {
-    Panel.STANDARD_TRAY_ICON_ORDER.unshift("mpriscontrol");
-    Panel.STANDARD_TRAY_ICON_SHELL_IMPLEMENTATION["mpriscontrol"] = Indicator;
+function enable() {
+    Main.panel.addToStatusArea("mpriscontrol", new MprisIndicator());
+}
+
+function disable() {
+    for (let Index = 0; Index < Main.panel._rightBox.get_children().length; Index++){
+        if(Main.panel._statusArea["mpriscontrol"] == Main.panel._rightBox.get_children()[Index]._delegate){
+            Main.panel._rightBox.get_children()[Index].destroy();
+            break;           
+        }
+    }
+    
+    Main.panel._statusArea["mpriscontrol"] = null;
+}
+
+function init(extensionMeta) {
 }
