@@ -2,10 +2,8 @@ const Main = imports.ui.main;
 const St = imports.gi.St;
 const DBus = imports.dbus;
 const Lang = imports.lang;
-const Mainloop = imports.mainloop;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const Panel = imports.ui.panel;
 
 const Gettext = imports.gettext.domain("gnome-shell");
 const _ = Gettext.gettext;
@@ -16,7 +14,7 @@ const PLAYBACKSTATUS_PLAYING    = "Playing";
 const PLAYBACKSTATUS_PAUSED     = "Paused";
 
 // TODO: Move to gsettings
-const SUPPORTED_PLAYERS = ["rhythmbox", "banshee"];
+const SUPPORTED_PLAYERS = ["rhythmbox", "nuvolaplayer", "banshee"];
 const HIDE_DISCONNECTED = true;
 
 
@@ -276,14 +274,20 @@ MprisIndicator.prototype = {
 };
 
 function enable() {
-    Main.panel.addToStatusArea("mpriscontrol", new MprisIndicator());
+    let children = Main.panel._rightBox.get_children();
+    for (let i = children.length - 1; i >= 0; --i) {
+        if(Main.panel._statusArea["volume"] == children[i]._delegate) {
+            Main.panel.addToStatusArea("mpriscontrol", new MprisIndicator(), children[i]._rolePosition);
+        }
+    }
 }
 
 function disable() {
-    for (let Index = 0; Index < Main.panel._rightBox.get_children().length; Index++){
-        if(Main.panel._statusArea["mpriscontrol"] == Main.panel._rightBox.get_children()[Index]._delegate){
-            Main.panel._rightBox.get_children()[Index].destroy();
-            break;           
+    let children = Main.panel._rightBox.get_children();
+    for (let i = children.length - 1; i >= 0; --i) {
+        if(Main.panel._statusArea["mpriscontrol"] == children[i]._delegate){
+            Main.panel._rightBox.get_children()[i].destroy();
+            break;
         }
     }
     
