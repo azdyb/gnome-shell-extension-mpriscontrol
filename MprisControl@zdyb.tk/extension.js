@@ -4,6 +4,7 @@ const DBus = imports.dbus;
 const Lang = imports.lang;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
+const Clutter = imports.gi.Clutter;
 
 const Gettext = imports.gettext.domain("gnome-shell");
 const _ = Gettext.gettext;
@@ -127,6 +128,7 @@ MprisIndicator.prototype = {
         PanelMenu.SystemStatusButton.prototype._init.call(this, "media-eject", null);
 
         this.actor.connect("button-press-event", Lang.bind(this, this.on_indicator_buttonpress));
+        this.actor.connect("scroll-event", Lang.bind(this, this.on_indicator_scroll));
         
         this.menu_playback = new St.BoxLayout({name: "playbackControls"});
         this.menu.addActor(this.menu_playback);
@@ -177,6 +179,21 @@ MprisIndicator.prototype = {
             return true;
         }
         return false;
+    },
+    
+    on_indicator_scroll: function(actor, event) { 
+        let direction = event.get_scroll_direction();
+        
+        if(this.mprisplayer2_player){
+            switch(direction){
+                case Clutter.ScrollDirection.DOWN:
+                    this.mprisplayer2_player.PreviousRemote();
+                    break;
+                case Clutter.ScrollDirection.UP:
+                    this.mprisplayer2_player.NextRemote();
+                    break;
+            }
+        }
     },
     
     on_playermenu_clicked: function() {
