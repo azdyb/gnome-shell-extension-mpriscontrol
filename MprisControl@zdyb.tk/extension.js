@@ -181,15 +181,15 @@ MprisIndicator.prototype = {
         return false;
     },
     
-    on_indicator_scroll: function(actor, event) { 
+    on_indicator_scroll: function(sender, event) {
         let direction = event.get_scroll_direction();
         
-        if(this.mprisplayer2_player){
+        if(this.mprisplayer2_player) {
             switch(direction){
-                case Clutter.ScrollDirection.DOWN:
+                case Clutter.ScrollDirection.UP:
                     this.mprisplayer2_player.PreviousRemote();
                     break;
-                case Clutter.ScrollDirection.UP:
+                case Clutter.ScrollDirection.DOWN:
                     this.mprisplayer2_player.NextRemote();
                     break;
             }
